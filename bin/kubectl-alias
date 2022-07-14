@@ -1,0 +1,251 @@
+#!/usr/bin/env bash
+
+# Copyright (c) 2022 Wenhao Ji <predator.ray@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+# the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euf -o pipefail
+
+readonly PROG_NAME='kubectl alias'
+
+# PROG_DIR
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -h "$SOURCE" ]]; do
+    PROG_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ $SOURCE != /* ]] && SOURCE="$PROG_DIR/$SOURCE"
+done
+PROG_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+
+function warn() {
+    echo >&2 'warn:' "$@"
+}
+
+function error_and_exit() {
+    echo >&2 'error:' "$@"
+    echo >&2 "Run '${PROG_NAME} --help' for more information on the command."
+    exit 1
+}
+
+function print_version() {
+    local version_file="${PROG_DIR}/../VERSION"
+    if [[ -f "${version_file}" ]]; then
+        cat "${version_file}"
+    else
+        echo "unknown"
+    fi
+}
+
+function check_prerequisites() {
+    # kubectl is installed
+    if ! which kubectl 2>&1 >/dev/null; then
+        echo >&2 'kubectl is not found.'
+        exit 127
+    fi
+
+    # gnu-getopt is installed
+    if [[ ! -z "${GNU_GETOPT_PREFIX:-}" ]]; then
+        hash -p "${GNU_GETOPT_PREFIX}/bin/getopt" getopt
+    else
+        local getopt_test=0
+        getopt -T 2>&1 >/dev/null || getopt_test="$?"
+        if [[ ! "${getopt_test}" -eq 4 ]]; then
+            echo >&2 'The getopt is not GNU enhanced version.'
+            echo >&2 'Please install gnu-getopt and either add it to your PATH or set GNU_GETOPT_PREFIX env variable to its installed location.'
+            exit 4
+        fi
+    fi
+}
+
+function usage() {
+    cat << EOF
+Creates aliases for the kubectl command.
+
+Examples:
+# "kubectl uc ctx1" instead of "kubectl config use-context ctx1"
+${PROG_NAME} uc 'config use-context'
+
+# "kubectl cd ns1" instead of "kubectl config set-context \$(kubectl config current-context) --namespace ns1"
+${PROG_NAME} cd 'config set-context \$(kubectl config current-context) --namespace'
+
+# "kubectl gpyl my-pod" instead of "kubectl get pod -o yaml my-pod | less"
+${PROG_NAME} --no-args gpyl 'get pod -o yaml "\$1" | less'
+
+Options:
+  -d, --delete:     Delete the alias
+  -l, --list:       List all the aliases
+  -N, --no-args     Do not append arguments to the end of the command when executing
+  -h, --help:       Show the usage
+  -V, --version:    Print the version
+
+Usage:
+  ${PROG_NAME} [ -N | --no-args ] ALIAS COMMAND
+  ${PROG_NAME} ( -d | --delete ) ALIAS
+  ${PROG_NAME} ( -l | --list )
+EOF
+}
+
+function list_aliases() {
+    local argc="$#"
+    if [[ ! "${argc}" -eq 0 ]]; then
+        error_and_exit "-l, --list requires zero argument but ${argc}."
+    fi
+    local alias_dir="${PROG_DIR}/../alias"
+    if [[ ! -d "${alias_dir}" ]]; then
+        exit 0
+    fi
+    for kubectl_plugin_bin in $(ls -1 "${alias_dir}"); do
+        if [[ -x "${alias_dir}/${kubectl_plugin_bin}" && "${kubectl_plugin_bin}" = kubectl-* ]]; then
+            local alias_description
+            alias_description="$(sed -n 's/^# __ALIAS_DESCRIPTION__: \(.*\)/\1/p' "${alias_dir}/${kubectl_plugin_bin}" 2>/dev/null)"
+            if [[ -z "${alias_description}" ]]; then
+                local name_without_kubectl="${kubectl_plugin_bin:8}"
+                local unescaped_name="${name_without_kubectl//_/-}"
+                echo "${unescaped_name}"
+            else
+                echo "${alias_description}"
+            fi
+        fi
+    done
+}
+
+function delete_alias() {
+    local argc="$#"
+    if [[ ! "${argc}" -eq 1 ]]; then
+        error_and_exit "-d, --delete requires one argument but ${argc}."
+    fi
+    local alias_name="$1"
+    check_alias_name "${alias_name}"
+
+    local alias_dir="${PROG_DIR}/../alias"
+    local kubectl_plugin_bin="${alias_dir}/kubectl-${alias_name//-/_}"
+    if [[ ! -d "${alias_dir}" || ! -f "${kubectl_plugin_bin}" ]]; then
+        error_and_exit "The alias ${alias_name} does not exist."
+    fi
+    rm -f "${kubectl_plugin_bin}"
+}
+
+function check_alias_name() {
+    local alias_name="$1"
+    if [[ ! "${alias_name}" =~ (^[A-Za-z]([A-Za-z0-9\-])*$) ]]; then
+        error_and_exit 'The alias name must start with a letter and only include letters, numbers or dashes. ([A-Za-z][A-Za-z0-9\-]*)'
+    fi
+}
+
+function create_alias() {
+    local argc="$#"
+    if [[ ! "${argc}" -eq 2 ]]; then
+        error_and_exit "requires two arguments but ${argc}."
+    fi
+
+    local alias_name="$1"
+    check_alias_name "${alias_name}"
+    
+    local command="$2"
+    # TODO check command (ensure no carry-return)
+
+    # check alias kubectl-plugin directory
+    local alias_dir="${PROG_DIR}/../alias"
+    if [[ ! -d "${alias_dir}" ]]; then
+        mkdir -p "${alias_dir}"
+    fi
+
+    local kubectl_plugin_bin="${alias_dir}/kubectl-${alias_name//-/_}"
+    if [[ -f "${kubectl_plugin_bin}" ]]; then
+        error_and_exit "The alias already exists. Delete the alias firstly with --delete ${alias_name}."
+    fi
+    if [[ "${OPT_NO_ARGS:-0}" -gt 0 ]]; then
+        cat > "${kubectl_plugin_bin}" << EOF
+#!/bin/sh
+# __ALIAS_DESCRIPTION__: ${alias_name} = ${command} (no-args)
+kubectl ${command}
+EOF
+    else
+        cat > "${kubectl_plugin_bin}" << EOF
+#!/bin/sh
+# __ALIAS_DESCRIPTION__: ${alias_name} = ${command}
+kubectl ${command} "\$@"
+EOF
+    fi
+    chmod +x-w "${kubectl_plugin_bin}"
+}
+
+function main() {
+    check_prerequisites
+
+    if [[ $# -eq 0 ]]; then
+        usage
+        exit 0
+    fi
+
+    local opts
+    opts=$(getopt -o hVdlN --long help,version,delete,list,no-args -- "$@")
+    eval set -- $opts
+
+    local op_delete=0
+    local op_list=0
+    local opt_no_args=0
+    while [[ $# -gt 0 ]]; do
+        local opt="$1"
+        case "${opt}" in
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            -V|--version)
+                print_version
+                exit 0
+                ;;
+            -l|--list)
+                op_list=1
+                ;;
+            -d|--delete)
+                op_delete=1
+                ;;
+            -N|--no-args)
+                opt_no_args=1
+                ;;
+            --)
+                shift
+                break
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    if [[ "${op_delete}" -gt 0 && "${op_list}" -gt 0 ]]; then
+        error_and_exit 'The option "-l, --list" and "-d, --delete" cannot be specified at the same time.'
+    elif [[ "${op_list}" -gt 0 ]]; then
+        if [[ ${opt_no_args} -gt 0 ]]; then
+            warn 'The option -N, --no-args is not applicable to the option -l, --list.'
+        fi
+        list_aliases "$@"
+    elif [[ "${op_delete}" -gt 0 ]]; then
+        if [[ ${opt_no_args} -gt 0 ]]; then
+            warn 'The option -N, --no-args is not applicable to the option -d, --delete.'
+        fi
+        delete_alias "$@"
+    else
+        OPT_NO_ARGS="${opt_no_args}" create_alias "$@"
+    fi
+}
+
+main "$@"
