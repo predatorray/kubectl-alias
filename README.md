@@ -41,7 +41,7 @@ kubectl avada-kedavra --force=true --wait=false
 
 2. `brew install predatorray/brew/kubectl-alias`
 
-3. Make sure the `$PREFIX/alias` is added to your `PATH`.
+3. Add this line to your rc file.
   ```sh
   export PATH="$PATH:$(brew --prefix kubectl-alias)/alias"
   ```
