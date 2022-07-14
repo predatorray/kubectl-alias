@@ -157,7 +157,7 @@ function create_alias() {
     check_alias_name "${alias_name}"
     
     local command="$2"
-    # TODO check command (ensure no carry-return)
+    # TODO check command (ensure no carriage-return)
 
     # check alias kubectl-plugin directory
     local alias_dir="${PROG_DIR}/../alias"

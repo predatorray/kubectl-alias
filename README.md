@@ -29,6 +29,7 @@ kubectl gpyl my-pod
 # Avada Kedavra: A complicated curse
 kubectl alias avada-kedavra 'delete --all pods'
 
+# DO NOT run it in production!
 kubectl avada-kedavra --force=true --wait=false
 ```
 
@@ -40,21 +41,27 @@ kubectl avada-kedavra --force=true --wait=false
 
 2. `brew install predatorray/brew/kubectl-alias`
 
-3. Make sure the `alias/` is added to your `PATH`.
+3. Make sure the `$PREFIX/alias` is added to your `PATH`.
+  ```sh
+  export PATH="$PATH:$(brew --prefix kubectl-alias)/alias"
+  ```
 
 ### Manually
 
 1. Download the [latest release](https://github.com/predatorray/kubectl-alias/releases/latest).
 
-2. Unpack the kubectl-alias-*.tar.gz file and copy all the files to a directory, `/usr/local/kubectl-alias` for instance.
+2. Unpack the `kubectl-alias-*.tar.gz` file and copy all the files to a directory, `/usr/local/kubectl-alias` for instance.
 
-3. Add the `bin/` and the `alias/` directories to `PATH`. For example, add this line to your rc file: `export PATH="$PATH:/usr/local/kubectl-alias/bin:/usr/local/kubectl-alias/alias"`.
+3. Add both the `bin/` and the `alias/` directories to the `PATH`. For example, add this line to your rc file: 
+  ```sh
+  export PATH="$PATH:/usr/local/kubectl-alias/bin:/usr/local/kubectl-alias/alias"
+  ```
 
-4. (for Mac users) Install GNU `getopt` if it is not running on GNU-Linux. After that, add this line `export GNU_GETOPT_PREFIX="path/to/gnu-getopt"` to your rc file.
+4. If it is not running on GNU-Linux, install the GNU `getopt`. After that, add this line `export GNU_GETOPT_PREFIX="path/to/gnu-getopt"` to your rc file.
 
-### Usage
+## Usage
 
-#### Create an alias
+### Create an alias
 
 ```sh
 kubectl alias ALIAS COMMAND
@@ -63,17 +70,58 @@ kubectl alias -N ALIAS COMMAND
 kubectl alias --no-args ALIAS COMMAND
 ```
 
-The `-N, --no-args` flag TBD.
+The `-N, --no-args` flag is used when the arguments should not be passed to the end of the commands. It is useful when the offset parameter is explicitly declared in the alias command. For example,
 
-#### Delete an alias
+```sh
+kubectl alias --no-args gpyl 'get pod -o yaml $1 | less'
+```
+
+If the flag is absent, by executing `kubectl gpyl my-pod`, the `my-pod` argument will also be passed to the `less` commnd.
+
+```sh
+# WRONG
+kubectl alias gpyl 'get pod -o yaml $1 | less'
+kubectl get pod -o yaml my-pod | less my-pod 
+```
+
+### Delete an alias
 
 ```sh
 kubectl alias -d ALIAS
 kubectl alias --delete ALIAS
 ```
-#### List all the alias
+### List all the alias
 
 ```sh
 kubectl alias -l
 kubectl alias --list
 ```
+
+
+## FAQ
+
+### `error: unknown command "ALIAS NAME" for "kubectl"`
+
+This means that the `alias/` directory is correctly added to the `PATH` environment variable.
+
+Add this line to your rc file.
+
+```sh
+export PATH="$PATH:$(brew --prefix kubectl-alias)/alias"
+
+# Or, if installed manually.
+export PATH="$PATH:${PREFIX}/alias"
+```
+
+After that, run `kubectl plugin list` to check if the aliases have been loaded successfully. If the alias is named `v`, the output of the plugin list will be:
+
+```txt
+The following compatible plugins are available:
+
+/usr/local/bin/kubectl-alias
+/usr/local/opt/kubectl-alias/alias/kubectl-v
+```
+
+## Support
+
+Please feel free to [open an issue](https://github.com/predatorray/kubectl-alias/issues/new) if you find any bug or have any suggestion.
