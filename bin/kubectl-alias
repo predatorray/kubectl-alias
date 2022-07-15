@@ -23,6 +23,15 @@ set -euf -o pipefail
 
 readonly PROG_NAME='kubectl alias'
 
+declare -ra RESERVED_COMMANDS=(
+    'alias' 'alpha' 'annotate' 'api-resources' 'api-versions' 'apply' 'attach'
+    'auth' 'autoscale' 'certificate' 'cluster-info' 'completion' 'config' 'cordon'
+    'cp' 'create' 'debug' 'delete' 'describe' 'diff' 'drain' 'edit' 'exec'
+    'explain' 'expose' 'get' 'help' 'kustomize' 'label' 'logs' 'options' 'patch'
+    'plugin' 'port-forward' 'proxy' 'replace' 'rollout' 'run' 'scale' 'set' 'taint'
+    'top' 'uncordon' 'version' 'wait'
+)
+
 # PROG_DIR
 SOURCE="${BASH_SOURCE[0]}"
 while [[ -h "$SOURCE" ]]; do
@@ -31,6 +40,17 @@ while [[ -h "$SOURCE" ]]; do
     [[ $SOURCE != /* ]] && SOURCE="$PROG_DIR/$SOURCE"
 done
 PROG_DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"
+
+function array_contains() {
+    local occur="$1"
+    local arr=("${@:2}")
+    for e in "${arr[@]}"; do
+        if [[ "${e}" == "${occur}" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 function warn() {
     echo >&2 'warn:' "$@"
@@ -144,6 +164,9 @@ function check_alias_name() {
     local alias_name="$1"
     if [[ ! "${alias_name}" =~ (^[A-Za-z]([A-Za-z0-9\-])*$) ]]; then
         error_and_exit 'The alias name must start with a letter and only include letters, numbers or dashes. ([A-Za-z][A-Za-z0-9\-]*)'
+    fi
+    if array_contains "${alias_name}" "${RESERVED_COMMANDS[@]}"; then
+        error_and_exit "${alias_name} is a reserved command in kubectl."
     fi
 }
 

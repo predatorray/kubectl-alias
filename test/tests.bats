@@ -74,6 +74,18 @@ function teardown() {
     [ "${exit_code}" = 1 ]
 }
 
+@test "create_an_alias_with_reserved_command_version" {
+    local exit_code
+    bin/kubectl-alias 'version' 'yes' || exit_code="$?"
+    [ "${exit_code}" = 1 ]
+}
+
+@test "create_an_alias_with_reserved_command_get" {
+    local exit_code
+    bin/kubectl-alias 'get' 'yes' || exit_code="$?"
+    [ "${exit_code}" = 1 ]
+}
+
 @test "delete_an_alias" {
     bin/kubectl-alias v version
     [ -x alias/kubectl-v ]
