@@ -1,5 +1,8 @@
 # kubectl-alias
 
+![GitHub release version](https://img.shields.io/github/v/release/predatorray/kubectl-alias)
+![License](https://img.shields.io/github/license/predatorray/kubectl-alias)
+
 The missing `alias` command for `kubectl`.
 
 ## Examples

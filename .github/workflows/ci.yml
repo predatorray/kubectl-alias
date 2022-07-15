@@ -1,0 +1,13 @@
+name: ci
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: make
+        run: make all
