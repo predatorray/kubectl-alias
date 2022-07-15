@@ -106,7 +106,7 @@ kubectl alias --list
 
 ### `error: unknown command "ALIAS NAME" for "kubectl"`
 
-This means that the `alias/` directory is correctly added to the `PATH` environment variable.
+This means that the `alias/` directory is not correctly added to the `PATH` environment variable.
 
 Add this line to your rc file.
 
