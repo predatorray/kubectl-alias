@@ -30,11 +30,9 @@ kubectl gpyl my-pod
 ```
 
 ```sh
-# Avada Kedavra: A complicated curse
-kubectl alias avada-kedavra 'delete --all pods'
-
-# DO NOT run it in production!
-kubectl avada-kedavra --force=true --wait=false
+# Make kubectl awesome!
+kubectl alias avada-kedavra 'delete'
+kubectl alias alohomora 'exec -it $1 -- bash'
 ```
 
 ## Installation
@@ -45,9 +43,22 @@ kubectl avada-kedavra --force=true --wait=false
 
 2. `brew install predatorray/brew/kubectl-alias`
 
-3. Add this line to your rc file.
+3. Add this line to your rc file (e.g.: `~/.bashrc`, `~/.zshrc`).
   ```sh
   export PATH="$PATH:$(brew --prefix kubectl-alias)/alias"
+  ```
+
+### Krew
+
+1. [Install Krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) or upgrade to its latest version using `kubectl krew upgrade`.
+
+2. `kubectl krew index add predatorray https://github.com/predatorray/krew-index.git`
+
+3. `kubectl krew install predatorray/alias`
+
+4. Add this line to your rc file (e.g.: `~/.bashrc`, `~/.zshrc`).
+  ```sh
+  export PATH="$PATH:$(kubectl alias --prefix)"
   ```
 
 ### Manually
