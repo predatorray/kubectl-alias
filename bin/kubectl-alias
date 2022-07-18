@@ -110,6 +110,8 @@ Options:
   -d, --delete:     Delete the alias
   -l, --list:       List all the aliases
   -N, --no-args     Do not append arguments to the end of the command when executing
+
+  --prefix          Display the alias path
   -h, --help:       Show the usage
   -V, --version:    Print the version
 
@@ -117,6 +119,7 @@ Usage:
   ${PROG_NAME} [ -N | --no-args ] ALIAS COMMAND
   ${PROG_NAME} ( -d | --delete ) ALIAS
   ${PROG_NAME} ( -l | --list )
+  ${PROG_NAME} --prefix
 EOF
 }
 
@@ -208,6 +211,22 @@ EOF
     chmod +x-w "${kubectl_plugin_bin}"
 }
 
+function print_prefix() {
+    local argc="$#"
+    if [[ ! "${argc}" -eq 0 ]]; then
+        error_and_exit "--prefix requires zero argument but ${argc}."
+    fi
+    local alias_dir="${PROG_DIR}/../alias"
+    local prog_parent_dir="${PROG_DIR}/.."
+    if [[ -d "${alias_dir}" && -x "${alias_dir}" ]]; then
+        ( cd "${alias_dir}" && pwd )
+    elif [[ -d "${prog_parent_dir}" && -x "${prog_parent_dir}" ]]; then
+        echo "$( cd "${prog_parent_dir}" && pwd )/alias"
+    else
+        error_and_exit "cannot find the alias directory: ${alias_dir}"
+    fi
+}
+
 function main() {
     check_prerequisites
 
@@ -217,11 +236,12 @@ function main() {
     fi
 
     local opts
-    opts=$(getopt -o hVdlN --long help,version,delete,list,no-args -- "$@")
+    opts=$(getopt -o hVdlN --long help,version,delete,list,no-args,prefix -- "$@")
     eval set -- $opts
 
     local op_delete=0
     local op_list=0
+    local op_prefix=0
     local opt_no_args=0
     while [[ $# -gt 0 ]]; do
         local opt="$1"
@@ -240,6 +260,9 @@ function main() {
             -d|--delete)
                 op_delete=1
                 ;;
+            --prefix)
+                op_prefix=1
+                ;;
             -N|--no-args)
                 opt_no_args=1
                 ;;
@@ -254,8 +277,9 @@ function main() {
         shift
     done
 
-    if [[ "${op_delete}" -gt 0 && "${op_list}" -gt 0 ]]; then
-        error_and_exit 'The option "-l, --list" and "-d, --delete" cannot be specified at the same time.'
+    local op_sum="$(( op_delete + op_list + op_prefix ))"
+    if [[ "${op_sum}" -gt 1 ]]; then
+        error_and_exit 'The option "-l, --list" or "-d, --delete" or "--prefix" cannot be used at the same time.'
     elif [[ "${op_list}" -gt 0 ]]; then
         if [[ ${opt_no_args} -gt 0 ]]; then
             warn 'The option -N, --no-args is not applicable to the option -l, --list.'
@@ -266,6 +290,8 @@ function main() {
             warn 'The option -N, --no-args is not applicable to the option -d, --delete.'
         fi
         delete_alias "$@"
+    elif [[ "${op_prefix}" -gt 0 ]]; then
+        print_prefix "$@"
     else
         OPT_NO_ARGS="${opt_no_args}" create_alias "$@"
     fi
