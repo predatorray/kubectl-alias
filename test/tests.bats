@@ -93,6 +93,11 @@ function teardown() {
     [ ! -f alias/kubectl-v ]
 }
 
+@test "delete_an_alias_that_does_not_exist" {
+    bin/kubectl-alias --delete na || exit_code="$?"
+    [ "${exit_code}" = 1 ]
+}
+
 @test "list_all_aliaes" {
     bin/kubectl-alias v1 version
     bin/kubectl-alias v2 version
@@ -109,4 +114,21 @@ function teardown() {
 @test "help" {
     local version_output=$(bin/kubectl-alias --help)
     [ ! -z "${version_output}" ]
+}
+
+@test "prefix" {
+    local prefix_output=$(bin/kubectl-alias --prefix)
+    [ "${prefix_output}" = "$(pwd)/alias" ]
+}
+
+@test "list_and_delete_at_same_time" {
+    local exit_code
+    bin/kubectl-alias '--list' '--delete' foobar || exit_code="$?"
+    [ "${exit_code}" = 1 ]
+}
+
+@test "list_and_delete_and_prefix_at_same_time" {
+    local exit_code
+    bin/kubectl-alias '--list' '--delete' foobar '--prefix' || exit_code="$?"
+    [ "${exit_code}" = 1 ]
 }
