@@ -2,7 +2,7 @@
 
 ![GitHub release version](https://img.shields.io/github/v/release/predatorray/kubectl-alias)
 ![License](https://img.shields.io/github/license/predatorray/kubectl-alias)
-![Github Workflow status](https://img.shields.io/github/workflow/status/predatorray/kubectl-alias/ci)
+![Github Workflow status](https://img.shields.io/github/actions/workflow/status/predatorray/kubectl-alias/ci.yml?branch=master)
 
 The missing `alias` command for `kubectl`.
 
