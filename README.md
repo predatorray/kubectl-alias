@@ -52,7 +52,7 @@ kubectl alias alohomora 'exec -it $1 -- bash'
 
 1. [Install Krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) or upgrade to its latest version using `kubectl krew upgrade`.
 
-2. `kubectl krew index add predatorray https://github.com/predatorray/krew-index.git`
+2. `kubectl krew index add predatorray https://github.com/predatorray/my-krew-index.git`
 
 3. `kubectl krew install predatorray/alias`
 
